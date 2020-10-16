@@ -1,0 +1,24 @@
+{
+  "_schemaVersion": "1.0.0",
+  "return_colorbrewer": {
+    "inputs": [
+      {
+        "name": "cmap_name",
+        "kind": "required",
+        "type": [
+          "char",
+          "choices={'Spectral','RdYlGn','RdBu','PiYG','PRGn','RdYlBu','BrBG','RdGy','PuOr','Set2','Accent','Set1','Set3','Dark2','Paired','Pastel2','Pastel1','OrRd','PuBu','BuPu','Oranges','BuGn','YlOrBr','YlGn','Reds','RdPu','Greens','YlGnBu','Purples','GnBu','Greys','YlOrRd','PuRd','Blues','PuBuGn'}"
+        ],
+        "purpose" : "Colorbrewer map name"
+      },
+      {
+        "name": "num_colors",
+        "kind": "ordered",
+        "type": [
+          "numeric"
+        ], 
+        "purpose": "Number of colors"
+      }
+    ]
+  }
+}
