@@ -36,14 +36,17 @@ num_train_incomplete = num_train - num_train_complete;
 train_norm_input_opt = opts.train_norm_input;
 
 p_bar = 1/(2*N); 
-p_inc = opts.p_inc; 
+train_p_inc = opts.train_p_inc; 
 
-vec_train_completeness = [ones(num_train_complete,1); (1-p_inc) * ones(num_train_incomplete,1)]'; 
+vec_train_completeness = [ones(num_train_complete,1); (1-train_p_inc) * ones(num_train_incomplete,1)]'; 
 
 U_trains = [arrayfun(@(~) generate_bar_input(N, p_bar, train_norm_input_opt),1:num_train_complete, 'uni', 0), ...
-            arrayfun(@(~) generate_bar_input_incomplete(N, p_bar, p_inc, train_norm_input_opt), 1:num_train_incomplete, 'uni', 0)];
-
+            arrayfun(@(~) generate_bar_input_incomplete(N, p_bar, train_p_inc, train_norm_input_opt), 1:num_train_incomplete, 'uni', 0)];
+   
 points_to_record_W = [1, num_train_complete, num_train]; 
+if isfield(opts, 'points_to_record_W')
+   points_to_record_W =  opts.points_to_record_W; 
+end
 
 %% Generate test data
 test_p_inc_opts =  opts.test_p_incs;
@@ -70,7 +73,9 @@ W_s = cell(length(points_to_record_W), 1);
 bar_alphaW_v = zeros(1, num_savedsamples);
 dY_objvsnoise_test = zeros(length(test_p_inc_opts), num_savedsamples);
 
-cnt_save = 1;
+cnt_save_subsampled = 1;
+cnt_save_W = 1; 
+
 for i = 1:num_train
     % calculate from train
     U = U_trains{i}; 
@@ -92,7 +97,8 @@ for i = 1:num_train
     % saving         
     reshaped_W = reshape(W,[N,N]); 
     if ~isempty(find(i == points_to_record_W,1))
-        W_s{i} = reshaped_W;
+        W_s{cnt_save_W} = reshaped_W;
+        cnt_save_W = cnt_save_W + 1;
     end
     
     if mod(i-1,subsampled) ~= 0 
@@ -103,22 +109,21 @@ for i = 1:num_train
     X_tests = W * U_tests;
     Y_tests = sigmoidal_activation(X_tests, a, b);
     
-    dY_objvsnoise_test(:,cnt_save) = arrayfun(@(p_inc_test) ...
+    dY_objvsnoise_test(:,cnt_save_subsampled) = arrayfun(@(p_inc_test) ...
         mean(Y_tests(test_p_inc_vec == p_inc_test & test_labels == 1)) - ...
         mean(Y_tests(test_p_inc_vec == p_inc_test & test_labels == 0)), ...
         test_p_inc_opts, 'uni', 1);
 
-    a_v(:,cnt_save) = a; 
-    b_v(:,cnt_save) = b; 
-    t_v(:,cnt_save) = i; 
+    a_v(:,cnt_save_subsampled) = a; 
+    b_v(:,cnt_save_subsampled) = b; 
+    t_v(:,cnt_save_subsampled) = i; 
 
-    bar_alphaW_v(:,cnt_save) = sum(reshaped_W(opts.selrow,:),'all') / sum(W(:)); 
+    bar_alphaW_v(:,cnt_save_subsampled) = sum(reshaped_W(opts.selrow,:),'all') / sum(W(:)); 
     
-    cnt_save = cnt_save + 1;
+    cnt_save_subsampled = cnt_save_subsampled + 1;
 end
 
 %% Save
-
 
 res = struct; 
 res.t = t_v;

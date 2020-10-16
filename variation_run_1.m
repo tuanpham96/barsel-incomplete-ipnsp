@@ -34,7 +34,7 @@ def_opts.test_shuffle = false; % not necessary
 
 
 %% Variations 
-p_inc_vec = [0,0.1,0.2,0.3,0.4,0.5];
+train_p_inc_vec = [0,0.1,0.2,0.3,0.4,0.5];
 num_rand = 10; 
 
 % for eta_ip_a, eta_ip_b
@@ -69,24 +69,24 @@ training_subconditions = struct(...
     norm_input_conditions_catfieldvals{:});
 vec_fields_subcond = fieldnames(training_subconditions); 
 
-num_p_inc_vec = length(p_inc_vec);
+num_train_p_inc_vec = length(train_p_inc_vec);
 num_train_subconds = length(training_subconditions);
 
 %% Train 
 
-train_results = cell(num_train_subconds, num_p_inc_vec); 
+train_results = cell(num_train_subconds, num_train_p_inc_vec); 
 vec_fields_tosave = {'a','b','bar_alpha_W', 'vec_train_completeness', 'dY_objvsnoise_test'};
 
 for i = 1:num_train_subconds
     train_cond_struct = training_subconditions(i);
     
     tic
-    tmp_res = cell(1, num_p_inc_vec); 
-    parfor j = 1:num_p_inc_vec
-        p_inc = p_inc_vec(j); 
+    tmp_res = cell(1, num_train_p_inc_vec); 
+    parfor j = 1:num_train_p_inc_vec
+        train_p_inc = train_p_inc_vec(j); 
         
         opts = def_opts;
-        opts.p_inc = p_inc;
+        opts.train_p_inc = train_p_inc;
         for k = 1:length(vec_fields_subcond)
             opts.(vec_fields_subcond{k}) = train_cond_struct.(vec_fields_subcond{k}); 
         end
@@ -108,7 +108,7 @@ for i = 1:num_train_subconds
 end
 
 save(fullfile('data', file_prefix), ...
-    'def_opts', 'p_inc_vec', 'training_subconditions', 'train_results');
+    'def_opts', 'train_p_inc_vec', 'training_subconditions', 'train_results');
 
 %% Plot Properties
 plt_fields = {'a', 'b', 'bar_alpha_W', 'vec_train_completeness'}; 
@@ -121,7 +121,7 @@ step_vec = step_vec(1:def_opts.subsampled:end);
 
 train_transition = ceil(def_opts.num_train * def_opts.p_train_complete); 
 
-cmap = parula(num_p_inc_vec)*0.85; 
+cmap = parula(num_train_p_inc_vec)*0.85; 
 
 var_description = sprintf('[$\\eta_a$ on (%g)/off, $\\eta_b$ on (%g)/off, norm input]', ...
     max(eta_ip_vec), max(eta_ip_vec));
@@ -146,10 +146,10 @@ for i = 1:nrows
         
         dat2plt = vertcat(vertcat(train_results{j,:}).(plt_field));
         arrayfun(@(x) plot(step_vec, dat2plt(x).mean, ...
-            'linewidth', 2, 'color', cmap(x,:)), 1:num_p_inc_vec); 
+            'linewidth', 2, 'color', cmap(x,:)), 1:num_train_p_inc_vec); 
         arrayfun(@(x) fill([step_vec, fliplr(step_vec)], ...
             [(dat2plt(x).mean + dat2plt(x).sem), fliplr(dat2plt(x).mean - dat2plt(x).sem)], ...
-            cmap(x,:), 'LineStyle', 'none', 'FaceColor', cmap(x,:), 'FaceAlpha', 0.3), 1:num_p_inc_vec);
+            cmap(x,:), 'LineStyle', 'none', 'FaceColor', cmap(x,:), 'FaceAlpha', 0.3), 1:num_train_p_inc_vec);
         
         if i == 1
             train_subcond_opts = train_results{j,1}.opts;
@@ -173,7 +173,7 @@ for i = 1:nrows
         if i == nrows && j == ncols
             cbar = colorbar;
             colormap(cmap);
-            caxis(p_inc_vec([1,end]));
+            caxis(train_p_inc_vec([1,end]));
             title(cbar, '$p_{inc}^{train}$', 'interpreter', 'latex');
             cbar.Position = cbar.Position .* [1,1,1,0.5] + [0.08,0.02,0,0];
         end
@@ -219,10 +219,10 @@ for i = 1:nrows
         
         dat2plt = vertcat(vertcat(train_results{j,:}).dY_objvsnoise_test);
         arrayfun(@(x) plot(step_vec, dat2plt(x).mean(i,:), ...
-            'linewidth', 2, 'color', cmap(x,:)), 1:num_p_inc_vec); 
+            'linewidth', 2, 'color', cmap(x,:)), 1:num_train_p_inc_vec); 
         arrayfun(@(x) fill([step_vec, fliplr(step_vec)], ...
             [(dat2plt(x).mean(i,:) + dat2plt(x).sem(i,:)), fliplr(dat2plt(x).mean(i,:) - dat2plt(x).sem(i,:))], ...
-            cmap(x,:), 'LineStyle', 'none', 'FaceColor', cmap(x,:), 'FaceAlpha', 0.3), 1:num_p_inc_vec);
+            cmap(x,:), 'LineStyle', 'none', 'FaceColor', cmap(x,:), 'FaceAlpha', 0.3), 1:num_train_p_inc_vec);
         
         
         if i == 1
@@ -248,7 +248,7 @@ for i = 1:nrows
         if i == nrows && j == ncols
             cbar = colorbar;
             colormap(cmap);
-            caxis(p_inc_vec([1,end]));
+            caxis(train_p_inc_vec([1,end]));
             title(cbar, '$p_{inc}^{train}$', 'interpreter', 'latex');
             cbar.Position = cbar.Position .* [1,1,1,0.5] + [0.08,0.02,0,0];
         end

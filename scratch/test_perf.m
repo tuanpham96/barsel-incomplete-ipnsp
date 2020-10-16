@@ -5,7 +5,7 @@ opts.b_init = -4.7; % -4.6 when norm_input = false, -4.7 otw
 opts.mu = 1/(2*opts.N);
 opts.selrow = 8; 
 
-opts.norm_input = false;  % true or false
+opts.train_norm_input = false;  % true or false
 opts.num_train = 20e4; 
 opts.p_train_complete = 1/10;
 
