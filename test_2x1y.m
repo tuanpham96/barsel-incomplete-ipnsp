@@ -1,5 +1,8 @@
 function res = test_2x1y(p_x, a, b, eta, T)
-w1 = 1;
+
+x1_max = 0.95;
+
+w1 = 1.05;
 w2 = 1; 
 w =  sqrt(w1^2 + w2^2);
 w1 = w1 / w;
@@ -9,8 +12,8 @@ alphaL1_v = zeros(T,1);
 alphaL2_v = zeros(T,1);
 w_v = zeros(T,2);
 for t = 1:T
-
-    x1 = rand < p_x; 
+    
+    x1 = x1_max*(rand < p_x); 
     x2 = 1 - x1;
     
     x = w1 * x1 + w2 * x2;  
@@ -18,8 +21,8 @@ for t = 1:T
     
     w =  sqrt(w1^2 + w2^2);
     
-    alphaL1_v(t) = w1/ (w1 + w2); 
-    alphaL2_v(t) = w1/ w;
+    alphaL1_v(t) = w1 / (w1 + w2); 
+    alphaL2_v(t) = w1 / w;
     
     w_v(t,:) = [w1,w2];
     

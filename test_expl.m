@@ -5,7 +5,7 @@ run start_up.m
 %%
 mu_Y = 0.1;
 eta_ip_a = 0e-3;
-eta_ip_b = 1e-3; 
+eta_ip_b = 0e-3; 
 
 T = 2e4; 
 
@@ -140,10 +140,10 @@ plot(res.w2, '-k');
 %%
 a = 6; 
 b = -4.5; 
-p_x = 0.52;
+p_x = 0.6;
 eta = 1e-3; 
 T = 3e4; 
-n = 100;
+n = 20;
 
 var_s = struct;
 
@@ -182,19 +182,41 @@ t = 1:T;
 figure; 
 
 subplot(211); hold on;
-lgnd_objs = structfun(@(r) plot(r.alpha_L1.mean, r.color, 'displayname', r.name), res_s);
+lgnd_objs = structfun(@(r) plot(t, r.alpha_L1.mean, r.color, 'displayname', r.name), res_s);
 structfun(@(r) fill([t fliplr(t)], [r.alpha_L1.mean-r.alpha_L1.sem;flipud(r.alpha_L1.mean+r.alpha_L1.sem)]', ...
     r.color, 'FaceAlpha', 0.2, 'LineStyle', 'none'), res_s);
 
-structfun(@(r) plot(r.alpha_L2.mean, r.color, 'linestyle', ':', 'displayname', r.name), res_s);
+structfun(@(r) plot(t, r.alpha_L2.mean, r.color, 'linestyle', ':', 'displayname', r.name), res_s);
 structfun(@(r) fill([t fliplr(t)], [r.alpha_L2.mean-r.alpha_L2.sem;flipud(r.alpha_L2.mean+r.alpha_L2.sem)]', ...
     r.color, 'FaceAlpha', 0.2, 'LineStyle', 'none'), res_s);
 legend(lgnd_objs);
 
 
 subplot(212); hold on;
-structfun(@(r) plot([r.w1.mean,r.w2.mean], r.color, 'displayname', r.name), res_s);
+structfun(@(r) plot(t,r.w1.mean, '-', 'color', r.color), res_s);
+structfun(@(r) plot(t,r.w2.mean, '--', 'color', r.color), res_s);
 structfun(@(r) fill([t fliplr(t)], [r.w1.mean-r.w1.sem;flipud(r.w1.mean+r.w1.sem)]', ...
     r.color, 'FaceAlpha', 0.2, 'LineStyle', 'none'), res_s);
 structfun(@(r) fill([t fliplr(t)], [r.w2.mean-r.w2.sem;flipud(r.w2.mean+r.w2.sem)]', ...
     r.color, 'FaceAlpha', 0.2, 'LineStyle', 'none'), res_s);
+
+%%
+x = 0:0.01:1;
+alpha = 0.56; 
+eta = 1; 
+
+a = 6; 
+b = -4.5; 
+% a = 1; 
+% b = 0; 
+
+r0 = testfun(alpha,a,b,eta,x);
+ra = testfun(alpha,a+1,b,eta,x);
+rb = testfun(alpha,a,b+1,eta,x);
+
+figure; hold on;
+plot(x,r0,'-k')
+plot(x,ra,'-r')
+plot(x,rb,'-b')
+xline(alpha);
+yline(1);
