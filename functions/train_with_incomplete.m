@@ -19,7 +19,12 @@ allow_only_exc = opts.weight_properties.onlyexcitatory;
 
 W = zeros(N); 
 W(opts.selrow,:) = 1; 
-W = W(:)' + rand(1,N_U); 
+
+k_r = 1; 
+if isfield(opts, 'k_r')
+    k_r = opts.k_r; 
+end
+W = W(:)' + k_r * rand(1,N_U); 
 
 if norm_W_order > 0
     W = normalize_weight_gen(W, norm_W_order);
@@ -28,12 +33,23 @@ end
 reshaped_W = reshape(W,[N,N]);
 bar_alphaW_0 = sum(reshaped_W(opts.selrow,:),'all') / sum(W(:));
 
+%% Input normalization opt
+if isfield(opts, 'norm_input_opt')
+    train_norm_input_opt = opts.norm_input_opt;
+    test_norm_input_opt  = opts.norm_input_opt;
+else
+    try
+        train_norm_input_opt = opts.train_norm_input;
+        test_norm_input_opt = opts.test_norm_input;
+    catch 
+        error('If `norm_input_opt` does not exist as a field, need both `test_norm_input` and `test_norm_input` fields defined');
+    end
+end
 %% Training generation
 num_train = opts.num_train; 
 p_train_complete = opts.p_train_complete;
 num_train_complete = ceil(p_train_complete * num_train);
 num_train_incomplete = num_train - num_train_complete; 
-train_norm_input_opt = opts.train_norm_input;
 
 p_bar = 1/(2*N); 
 train_p_inc = opts.train_p_inc; 
@@ -54,7 +70,18 @@ test_p_inc_opts =  opts.test_p_incs;
     opts.num_test_per_pinc, N, ...
     opts.test_p_sel, opts.selrow, ...
     opts.test_sigma_noise, test_p_inc_opts,...
-    opts.test_norm_input, opts.test_shuffle);
+    test_norm_input_opt, opts.test_shuffle);
+
+%% Functions 
+% actfun = @sigmoidal_activation; 
+% if isfield(opts, 'activation_function')
+%     actfun = opts.activation_function;
+% end
+% 
+% ipfun = @IP_Triesch_diffrate;
+% if isfield(opts, 'intrinsic_update_function')
+%     ipfun = opts.intrinsic_update_function;
+% end
 
 %% Train and record 
 subsampled = 1; 
