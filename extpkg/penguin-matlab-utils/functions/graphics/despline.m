@@ -18,6 +18,7 @@ function despline(varargin)
 % Modified by Tuan Pham, 2019 
 % - Oct 06, 2019: fixes to adapt to log scale, add offsetfactor
 % - Oct 25, 2019: fixes minor bugs 
+% - Jan 04, 2021: add missing function 
 % Note: 
 % - For stable usage, set the limits and scales of the axes before using.
 %   Minor ticks still unstably controlled (unnecessary minor ticks may
@@ -79,7 +80,6 @@ else
 end
 
 end
-
 
 function resetVertexLinearScale(ax) 
 if ~isempty(ax.XTick)
@@ -157,6 +157,10 @@ function new_limit = logOffsetLowBound(axis_limit, factor)
 if axis_limit(1) <= 0, error('Log scale cannot have non-positive lower limit'); end 
 offset_by = log10(axis_limit(2)/axis_limit(1))*factor; 
 new_limit = axis_limit .* 10.^([-1, 0]*offset_by);
+end
+
+function bound_v = get_bound(v)
+bound_v = [min(v(:)), max(v(:))]; 
 end
 
 
