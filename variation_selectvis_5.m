@@ -3,10 +3,9 @@ run start_up;
 
 graphic_setdefault(25, ...
     'DefaultFigureWindowStyle','normal', ...
-    'DefaultAxesTitleFontSize', 1, ...
-    'DefaultAxesLabelFontSize', 1.2, ...
+    'DefaultAxesTitleFontSize', 1.1, ...
+    'DefaultAxesLabelFontSize', 1.1, ...
     'DefaultAxesLineWidth', 2, ...
-    'DefaultAxesBox', 'on', ...
     'DefaultTextInterpreter', 'latex', ...
     'DefaultLegendInterpreter', 'latex', ...
     'DefaultFigureWindowStyle','normal');
@@ -20,21 +19,22 @@ if ~exist(fig_path, 'dir')
     mkdir(fig_path);
 end
 
-fig_file_prefix = 'sigmoidwiththres-time_at_T'; 
-full_fig_file_prefix = fullfile(fig_path, fig_file_prefix); 
-
-% select_time = ceil(size(train_results(1).a.mean,2)/2);
-% select_time_str = 'T/2';
-
-select_time = size(train_results(1).a.mean,2);
-select_time_str = 'T';
 %% Certain prepocessing steps
 params_tbl = array2table(param_combs, 'VariableNames', param_labels);
-
-[desired_a0_mat, desired_theta0_mat] = meshgrid(unique(params_tbl.a_init), unique(params_tbl.theta_init));
+unq_a0 = unique(params_tbl.a_init);
+unq_theta0 = unique(params_tbl.theta_init);
+[desired_a0_mat, desired_theta0_mat] = meshgrid(unq_a0, unq_theta0);
 desired_init_mat = struct;
 desired_init_mat.a0 = desired_a0_mat;
 desired_init_mat.theta0 = desired_theta0_mat;
+
+%%
+% eql_or_not = false(length(train_results),1);
+% for i = 1:length(train_results)
+%     prm = table2struct(params_tbl(i,:)); 
+%     res = train_results(i).opts;
+%     eql_or_not(i) = all(cellfun(@(x) res.(x) == prm.(x), fieldnames(prm), 'uni', 1));
+% end
 
 %% Split dY_objvsnoise_test for ease
 n_dYtest = size(train_results(1).dY_objvsnoise_test.mean,1);
@@ -47,22 +47,74 @@ for i = 1:n_dYtest
     end
 end
 
-%% Define select options for figure
-select_opts = struct;
+%% Selecting (a0,theta0) pairs
+ind_theta0_vec = [3, 8, 7];
+ind_a0_vec = [2, 3, 8]; 
 
-select_opts.col.none_ip = struct('eta_ip_a', 0, 'eta_ip_theta', 0);
-select_opts.col.gain_ip = struct('eta_ip_a', max_eta_ip_a, 'eta_ip_theta', 0);
-select_opts.col.thres_ip = struct('eta_ip_a', 0, 'eta_ip_theta', max_eta_ip_theta);
-select_opts.col.full_ip = struct('eta_ip_a', max_eta_ip_a, 'eta_ip_theta', max_eta_ip_theta);
+sel_color_inds = [3,5,8];
+cmaps = cellfun(@(x) return_colorbrewer(x), {'Greys', 'PuRd', 'GnBu'}, 'uni',0);
+cmaps = cellfun(@(x) x(sel_color_inds,:), cmaps, 'uni', 0);
 
-select_opts.row.train0 = struct('train_p_inc', 0);
-select_opts.row.train1 = struct('train_p_inc', 0.2);
-select_opts.row.train2 = struct('train_p_inc', 0.4);
+linstyles = {':', '-', '--'};
 
-colfields = fieldnames(select_opts.col);
-rowfields = fieldnames(select_opts.row);
+selected_fields = {'a','theta','bar_alpha_W','dYtest0','dYtest1','dYtest2'}; 
+removed_fields = setdiff(fieldnames(train_results), selected_fields);
 
-field_list = {'a', 'theta', 'bar_alpha_W', 'dYtest0', 'dYtest1', 'dYtest2'};
+ip_cond_struct = struct; 
+ip_cond_struct.none_ip = struct('eta_ip_a', 0, 'eta_ip_theta', 0);
+ip_cond_struct.gain_ip = struct('eta_ip_a', max_eta_ip_a, 'eta_ip_theta', 0);
+ip_cond_struct.thres_ip = struct('eta_ip_a', 0, 'eta_ip_theta', max_eta_ip_theta);
+ip_cond_struct.full_ip = struct('eta_ip_a', max_eta_ip_a, 'eta_ip_theta', max_eta_ip_theta);
+ip_conds = fieldnames(ip_cond_struct); 
+
+train_cond_struct = struct;
+train_cond_struct.train0 = struct('train_p_inc', 0);
+train_cond_struct.train1 = struct('train_p_inc', 0.2);
+train_cond_struct.train2 = struct('train_p_inc', 0.4);
+train_conds = fieldnames(train_cond_struct);
+
+num_init_select = length(ind_a0_vec);
+selected_results = cell(num_init_select,1);
+
+for i = 1:num_init_select
+    a0 = unq_a0(ind_a0_vec(i)); 
+    theta0 = unq_theta0(ind_theta0_vec(i));
+    
+    common_select_conditions = struct; 
+    common_select_conditions.a_init = a0; 
+    common_select_conditions.theta_init = theta0;
+    
+    tmp_res = struct(); 
+    
+    for j1 = 1:length(ip_conds)
+        ip_cond = ip_conds{j1};
+        
+        tmp_res_j1 = struct; 
+        for j2 = 1:length(train_conds)
+            train_cond = train_conds{j2};
+            
+            select_conditions = mergefield_struct(common_select_conditions, ...
+                ip_cond_struct.(ip_cond), train_cond_struct.(train_cond));
+            
+            select_entry = cellfun(@(x) params_tbl.(x) == select_conditions.(x), ...
+                fieldnames(select_conditions), 'uni', 0);            
+            select_entry = all(horzcat(select_entry{:}), 2);
+            tmp_res_j1.(train_cond) = rmfield(train_results(select_entry),removed_fields);
+        end
+        
+        tmp_res_j2 = struct; 
+        for j2 = 1:length(selected_fields)
+            sel_field = selected_fields{j2};
+            tmp_j2 = structfun(@(x) x.(sel_field), tmp_res_j1, 'uni', 0);
+            tmp_j2 = cellfun(@(x) tmp_j2.(x).mean, train_conds, 'uni', 0);
+            tmp_res_j2.(sel_field) = vertcat(tmp_j2{:});
+        end
+        
+        tmp_res.(ip_cond) = tmp_res_j2;
+    end
+    
+    selected_results{i} = tmp_res;
+end
 
 %% Latex structs
 latex_structs = struct;
@@ -74,6 +126,7 @@ latexname_struct.gain_ip = 'gain plast';
 latexname_struct.thres_ip = 'threshold plast';
 latexname_struct.full_ip = 'full IP';
 
+latexname_struct.train = 'p_{\mathrm{inc}}^{\mathrm{train}}';
 latexname_struct.train0 = 'p_{\mathrm{inc}}^{\mathrm{train}} = 0';
 latexname_struct.train1 = 'p_{\mathrm{inc}}^{\mathrm{train}} = 0.2';
 latexname_struct.train2 = 'p_{\mathrm{inc}}^{\mathrm{train}} = 0.4';
@@ -98,15 +151,129 @@ latexfun_struct.mathbf = @(x) sprintf('$\\mathbf{%s}$',x);
 
 latexfun_struct.init = @(x) sprintf('$%s_{0}$', x);
 latexfun_struct.s = @(x) sprintf('$%s$ at $%s$', x, select_time_str);
-latexfun_struct.Ds0 = @(x) sprintf('$%s$ difference from beginning to $%s$', x, select_time_str);
+latexfun_struct.Ds0 = @(x) sprintf('$f = [%s]$, showing $f(%s) - f(0)$', x, select_time_str);
 latexfun_struct.df = @(x) sprintf('$f = [%s]$, showing speed $\\langle df_{0 \\rightarrow %s} \\rangle $', x, select_time_str);
 
 latex_structs.names = latexname_struct;
 latex_structs.functions = latexfun_struct;
 
 %%
-vis_results = plot_selected(full_fig_file_prefix, train_results, params_tbl, field_list, ...
-    desired_init_mat, select_opts, select_time, latex_structs);
+nrows = 3; 
+ncols = length(ip_conds); 
+select_field_figs = {selected_fields(1:3), selected_fields(4:end)}; 
+fignames = {'selectvis-net', 'selectvis-dY'};
+
+for i = 1:length(select_field_figs)
+    sel_field_list = select_field_figs{i}; 
+    
+    figure;
+    ax_pos = tight_subplot(nrows,ncols,[.03 .03],[0.1 0.08],[0.08 0.1], false);
+    [ax_cols,ax_rows] = meshgrid(1:ncols,1:nrows);
+    [fields_1, fields_2] =  meshgrid(ip_conds,sel_field_list); 
+    for j = 1:numel(fields_1)
+
+        f1 = fields_1{j};
+        f2 = fields_2{j};
+        
+        ax_cmap = vertcat(cmaps{:});
+        axes('units', 'normalized', 'position', ax_pos{j}, ...
+            'colororder', ax_cmap, ...
+            'Tag', sprintf('%s-%s', f1, f2), 'box', 'off');
+        hold on; 
+        plt_mat = cellfun(@(x) x.(f1).(f2)', selected_results, 'uni', 0);
+        plt_mat = horzcat(plt_mat{:});        
+        plot(plt_mat, 'linewidth', 3);
+        
+        xline((def_opts.num_train * def_opts.p_train_complete)/def_opts.subsampled, ':k', 'linewidth', 2);
+        
+        row_ind = ax_rows(j);
+        col_ind = ax_cols(j);
+        if row_ind == 1
+            title(latexfun_struct.textbf(latex_structs.names.(f1)));
+        end
+        if col_ind == 1
+            ylabel(sprintf('$%s$', latex_structs.names.(f2)));
+        else
+            set(gca, 'ycolor', 'none');
+        end
+        if row_ind == nrows
+            xlabel(sprintf('\\# steps $\\times %d$', def_opts.subsampled)); 
+        else
+            set(gca, 'xcolor', 'none');
+        end
+        
+    end
+    
+    
+    linkaxes(findall(gcf, 'type', 'axes'), 'x'); 
+    for j = 1:length(sel_field_list)
+        field_name = sel_field_list{j};
+        ax_linky = findall(gcf, 'type', 'axes');
+        ind_ax = regexp(get(ax_linky,'tag'), sprintf('-%s$', field_name), 'tokens');
+        ax_linky = ax_linky(cellfun(@(x) ~isempty(x), ind_ax, 'uni', 1));
+        linkaxes(ax_linky, 'y');
+    end
+    despline('all');
+    
+    fig_name = fullfile(fig_path, fignames{i});
+    
+    export_fig(fig_name, '-r300', '-p0.02');
+    close;
+end
+
+%%
+ncols = 8;
+
+figure(...
+    'Units', 'normalized', ...
+    'Color', 'none',...
+    'Position', [0.1,0.1,0.6,0.5], ...
+    'DefaultAxesFontSize', 35, ...
+    'DefaultAxesTitleFontSize', 1.1, ...
+    'DefaultAxesLabelFontSize', 1.6, ...
+    'DefaultAxesLineWidth', 2);
+ax = subplot(1,ncols+1,1:(ncols-num_init_select)); hold on; 
+init_mat = zeros(length(unq_a0), length(unq_theta0));
+cmap_init = cellfun(@(x) x(end,:), cmaps, 'uni', 0);
+cmap_init = [0.95,0.95,0.95;vertcat(cmap_init{:})];
+for i = 1:num_init_select
+    init_mat(ind_a0_vec(i), ind_theta0_vec(i)) = i;
+end
+image(unq_a0, unq_theta0, init_mat'); hold on; 
+colormap(gca, cmap_init); pbaspect([1,1,1]);
+xlim(unq_a0([1,end]) + 0.5*[-1,1]'*diff(unq_a0([1,2]))); 
+ylim(unq_theta0([1,end]) + 0.5*[-1,1]'*diff(unq_theta0([1,2]))); 
+xlabel(latexfun_struct.init(latex_structs.names.a));
+ylabel(latexfun_struct.init(latex_structs.names.theta));
+ax.Position = ax.Position.*[1,1,0.7,0.7] + [0.05,0.2,0,0];
+despline;
+
+num_cbar_ticks = length(train_conds); 
+cbar_ticklbls = unique(params_tbl.train_p_inc);
+for i = 1:num_init_select
+    ax = subplot(1,ncols+1,ncols-num_init_select+i); 
+    set(ax, 'visible', 'off');
+    cbar = colorbar(ax); 
+    colormap(ax, cmaps{i});
+    cbar.Position = cbar.Position .* [1,1,8,0.7];
+    cbar.FontSize = 40;
+    cbar.Box = 'on';
+    cbar.LineWidth = 3;
+    if i == num_init_select
+        cbar_ticks = linspace(0,1,num_cbar_ticks+1);
+        cbar_ticks = 0.5*(cbar_ticks(1:end-1) + cbar_ticks(2:end)); 
+        cbar.Ticks = cbar_ticks;
+        cbar.TickLabels = cbar_ticklbls;        
+    else
+        cbar.Ticks = '';
+    end
+    if i == 2
+        title(cbar, sprintf('$%s$', latexname_struct.train), 'interpreter', 'latex', 'fontsize', 50);
+    end
+    
+end
+fig_name = fullfile(fig_path, 'selectvis-sup');
+export_fig(fig_name, '-r300', '-p0.02');
 
 
 %% Local functions
